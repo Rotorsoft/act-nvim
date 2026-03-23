@@ -91,17 +91,19 @@ If you have the [act monorepo](https://github.com/Rotorsoft/act-root) cloned as 
 └── act-nvim/         ← this repo
 ```
 
+Link your local `act-diagram` for development:
+
 ```bash
 cd ~/Projects/act-nvim
-pnpm install        # auto-detects ../act/libs/act-diagram and links it
-pnpm build          # builds with local act-diagram
+pnpm setup                              # links ../act/libs/act-diagram
+# or with a custom path:
+pnpm setup /path/to/act/libs/act-diagram
+
+pnpm install                            # applies the override
+pnpm build                              # builds with local act-diagram
 ```
 
-The `postinstall` script runs `scripts/setup.mjs` which:
-1. Checks if `../act/libs/act-diagram` exists
-2. If yes — adds a `pnpm.overrides` entry to use the local version
-3. Builds `act-diagram` if needed
-4. Builds `act-nvim`
+This adds a `pnpm.overrides` entry to `package.json` that points `@rotorsoft/act-diagram` to your local copy. Changes to act-diagram are picked up on rebuild.
 
 To rebuild after changing act-diagram:
 
@@ -109,6 +111,15 @@ To rebuild after changing act-diagram:
 cd ~/Projects/act && pnpm -F @rotorsoft/act-diagram build
 cd ~/Projects/act-nvim && pnpm build
 ```
+
+To switch back to the published npm version:
+
+```bash
+pnpm setup:unlink
+pnpm install
+```
+
+**Note:** the `pnpm.overrides` change is local to your working copy — do not commit it.
 
 ### Without the local monorepo
 
@@ -125,7 +136,8 @@ pnpm build
 | `pnpm start` | Start the relay server |
 | `pnpm dev` | Start relay in watch mode (for plugin development) |
 | `pnpm nvim [path]` | Launch Neovim with plugin loaded |
-| `pnpm setup` | Re-run setup (auto-detect local monorepo) |
+| `pnpm setup [path]` | Link local act-diagram for development |
+| `pnpm setup:unlink` | Remove local link, use npm version |
 
 ## License
 

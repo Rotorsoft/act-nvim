@@ -27,7 +27,7 @@
     "start": "node dist/server/relay.js",
     "nvim": "node scripts/nvim.mjs",
     "setup": "node scripts/setup.mjs",
-    "preinstall": "node scripts/setup.mjs",
+    "setup:unlink": "node scripts/setup.mjs --unlink",
     "postinstall": "pnpm build"
   },
   "dependencies": {
