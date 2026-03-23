@@ -2,18 +2,14 @@ import { readFile } from "node:fs/promises";
 import { createServer as createHttpServer } from "node:http";
 import { createServer as createTcpServer, type Socket } from "node:net";
 import { extname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { WebSocketServer } from "ws";
 import { scanDir, watchDir, type WatchEvent } from "./watcher.js";
 
 process.title = "act-nvim-relay";
 const HTTP_PORT = parseInt(process.env.ACT_NVIM_HTTP_PORT ?? "4010", 10);
 const TCP_PORT = parseInt(process.env.ACT_NVIM_TCP_PORT ?? "4011", 10);
-const __dirname = fileURLToPath(new URL(".", import.meta.url));
-// Find dist/client/ whether running from dist/server/ (built) or src/server/ (dev)
-const PACKAGE_ROOT = __dirname.includes("/dist/")
-  ? join(__dirname, "..", "..")
-  : join(__dirname, "..", "..");
+// __dirname: in CJS (tsup bundle) provided by Node, in ESM (dev) by tsx
+const PACKAGE_ROOT = join(__dirname, "..", "..");
 const CLIENT_DIR = join(PACKAGE_ROOT, "dist", "client");
 
 const MIME: Record<string, string> = {

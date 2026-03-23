@@ -24,7 +24,7 @@
     "build:client": "vite build",
     "build": "pnpm build:server && pnpm build:client",
     "dev": "tsx watch src/server/relay.ts",
-    "start": "node dist/server/relay.js",
+    "start": "node dist/server/relay.cjs",
     "nvim": "node scripts/nvim.mjs",
     "setup": "node scripts/setup.mjs",
     "setup:unlink": "node scripts/setup.mjs --unlink",

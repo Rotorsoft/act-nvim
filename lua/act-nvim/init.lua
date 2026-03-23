@@ -19,7 +19,7 @@ end
 --- Find the relay.js entry point
 local function find_relay_path()
   local plugin_root = get_plugin_root()
-  local built = plugin_root .. "/dist/server/relay.js"
+  local built = plugin_root .. "/dist/server/relay.cjs"
   if vim.fn.filereadable(built) == 1 then
     return { "node", built }
   end
