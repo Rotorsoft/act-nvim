@@ -12,18 +12,21 @@ Click a node in the diagram and Neovim jumps to the source. Edit code and the di
 - pnpm >= 10.32.1
 - Neovim >= 0.10
 
-### Native pack
+### vim.pack (Neovim 0.11+)
+
+```lua
+vim.pack.add({ "https://github.com/Rotorsoft/act-nvim" })
+require("act-nvim").setup()
+```
+
+On first load, the plugin auto-installs dependencies and builds (`pnpm install`). This runs in the background — you'll see a notification when it's ready.
+
+### Manual
 
 ```bash
 git clone https://github.com/Rotorsoft/act-nvim.git \
   ~/.local/share/nvim/site/pack/act/start/act-nvim
-cd ~/.local/share/nvim/site/pack/act/start/act-nvim
-pnpm install
 ```
-
-The `postinstall` script builds the relay server and browser client automatically.
-
-### Neovim config
 
 Add to your `init.lua`:
 

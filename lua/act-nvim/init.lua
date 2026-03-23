@@ -280,6 +280,27 @@ function M.setup(opts)
     end
   end
 
+  -- Auto-build on first load if not built yet
+  local plugin_root = get_plugin_root()
+  if vim.fn.filereadable(plugin_root .. "/dist/server/relay.js") ~= 1
+    and vim.fn.filereadable(plugin_root .. "/package.json") == 1 then
+    vim.notify("[act-nvim] installing and building...", vim.log.levels.INFO)
+    vim.fn.jobstart({ "pnpm", "install" }, {
+      cwd = plugin_root,
+      on_exit = function(_, code)
+        if code == 0 then
+          vim.schedule(function()
+            vim.notify("[act-nvim] ready", vim.log.levels.INFO)
+          end)
+        else
+          vim.schedule(function()
+            vim.notify("[act-nvim] build failed — run: cd " .. plugin_root .. " && pnpm install", vim.log.levels.ERROR)
+          end)
+        end
+      end,
+    })
+  end
+
   vim.api.nvim_create_user_command("ActDiagram", start, {
     nargs = "?",
     complete = "dir",
