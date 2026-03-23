@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@source "../../../../libs/act-diagram/src/**/*.tsx";
+@source "../../node_modules/@rotorsoft/act-diagram/**/*.{js,cjs}";
 
 html,
 body,
