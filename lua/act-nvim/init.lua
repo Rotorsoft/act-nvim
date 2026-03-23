@@ -21,9 +21,7 @@ local function find_relay_path()
   local plugin_root = get_plugin_root()
   local built = plugin_root .. "/dist/server/relay.js"
   if vim.fn.filereadable(built) == 1 then
-    local node = vim.fn.exepath("node")
-    if node == "" then return nil end
-    return { node, built }
+    return { "node", built }
   end
   return nil
 end
@@ -279,30 +277,6 @@ function M.setup(opts)
       if config[k] ~= nil then
         config[k] = v
       end
-    end
-  end
-
-  -- Auto-build on first load if not built yet
-  local plugin_root = get_plugin_root()
-  if vim.fn.filereadable(plugin_root .. "/dist/server/relay.js") ~= 1
-    and vim.fn.filereadable(plugin_root .. "/package.json") == 1 then
-    local pnpm = vim.fn.exepath("pnpm")
-    if pnpm == "" then
-      vim.notify("[act-nvim] pnpm not found — install pnpm and run: cd " .. plugin_root .. " && pnpm install", vim.log.levels.ERROR)
-    else
-      vim.notify("[act-nvim] installing and building...", vim.log.levels.INFO)
-      vim.fn.jobstart({ pnpm, "install" }, {
-        cwd = plugin_root,
-        on_exit = function(_, code)
-          vim.schedule(function()
-            if code == 0 then
-              vim.notify("[act-nvim] ready", vim.log.levels.INFO)
-            else
-              vim.notify("[act-nvim] build failed — run: cd " .. plugin_root .. " && pnpm install", vim.log.levels.ERROR)
-            end
-          end)
-        end,
-      })
     end
   end
 

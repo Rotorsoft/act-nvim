@@ -9,7 +9,6 @@ Click a node in the diagram and Neovim jumps to the source. Edit code and the di
 ### Prerequisites
 
 - Node.js >= 22.18.0
-- pnpm >= 10.32.1
 - Neovim >= 0.10
 
 ### vim.pack (Neovim 0.11+)
@@ -18,8 +17,6 @@ Click a node in the diagram and Neovim jumps to the source. Edit code and the di
 vim.pack.add({ "https://github.com/Rotorsoft/act-nvim" })
 require("act-nvim").setup()
 ```
-
-On first load, the plugin auto-installs dependencies and builds (`pnpm install`). This runs in the background — you'll see a notification when it's ready.
 
 ### Manual
 
@@ -33,6 +30,8 @@ Add to your `init.lua`:
 ```lua
 require("act-nvim").setup()
 ```
+
+The plugin ships pre-built — no build step needed. Just `git clone` and go.
 
 ## Usage
 
