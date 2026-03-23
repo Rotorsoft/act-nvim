@@ -1,0 +1,57 @@
+{
+  "name": "@rotorsoft/act-nvim",
+  "type": "module",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Neovim plugin for Act event-sourcing diagrams — browser sidecar with bidirectional navigation",
+  "author": {
+    "name": "rotorsoft",
+    "email": "rotorsoft@outlook.com"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Rotorsoft/act-nvim.git"
+  },
+  "engines": {
+    "node": ">=22.18.0",
+    "pnpm": ">=10.32.1"
+  },
+  "packageManager": "pnpm@10.32.1",
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build:server": "tsup",
+    "build:client": "vite build",
+    "build": "pnpm build:server && pnpm build:client",
+    "dev": "tsx watch src/server/relay.ts",
+    "start": "node dist/server/relay.js",
+    "nvim": "node scripts/nvim.mjs",
+    "setup": "node scripts/setup.mjs",
+    "preinstall": "node scripts/setup.mjs",
+    "postinstall": "pnpm build"
+  },
+  "dependencies": {
+    "@rotorsoft/act-diagram": "^0.1.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.18",
+    "@types/node": "^25.5.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@types/ws": "^8.18.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "tailwindcss": "^4.1.18",
+    "tsup": "^8.5.0",
+    "tsx": "^4.21.0",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "@rotorsoft/act-diagram": "link:/Users/roger/Projects/act/libs/act-diagram"
+    }
+  }
+}
