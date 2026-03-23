@@ -16,72 +16,12 @@ local function get_plugin_root()
   )
 end
 
---- Install dependencies and build (runs once if dist/ is missing)
-local function ensure_built(plugin_root, callback)
-  local built = plugin_root .. "/dist/server/relay.js"
-  if vim.fn.filereadable(built) == 1 then
-    if callback then callback() end
-    return
-  end
-
-  -- Check if node_modules exists
-  local has_modules = vim.fn.isdirectory(plugin_root .. "/node_modules") == 1
-
-  if not has_modules then
-    vim.notify("[act-nvim] Installing dependencies...", vim.log.levels.INFO)
-    vim.fn.jobstart({ "pnpm", "install" }, {
-      cwd = plugin_root,
-      on_exit = function(_, code)
-        vim.schedule(function()
-          if code ~= 0 then
-            vim.notify("[act-nvim] pnpm install failed (exit " .. code .. ")", vim.log.levels.ERROR)
-            return
-          end
-          vim.notify("[act-nvim] Building...", vim.log.levels.INFO)
-          vim.fn.jobstart({ "pnpm", "build" }, {
-            cwd = plugin_root,
-            on_exit = function(_, build_code)
-              vim.schedule(function()
-                if build_code ~= 0 then
-                  vim.notify("[act-nvim] Build failed (exit " .. build_code .. ")", vim.log.levels.ERROR)
-                else
-                  vim.notify("[act-nvim] Ready", vim.log.levels.INFO)
-                  if callback then callback() end
-                end
-              end)
-            end,
-          })
-        end)
-      end,
-    })
-  else
-    vim.notify("[act-nvim] Building...", vim.log.levels.INFO)
-    vim.fn.jobstart({ "pnpm", "build" }, {
-      cwd = plugin_root,
-      on_exit = function(_, code)
-        vim.schedule(function()
-          if code ~= 0 then
-            vim.notify("[act-nvim] Build failed (exit " .. code .. ")", vim.log.levels.ERROR)
-          else
-            vim.notify("[act-nvim] Ready", vim.log.levels.INFO)
-            if callback then callback() end
-          end
-        end)
-      end,
-    })
-  end
-end
-
---- Find the relay.js entry point relative to this plugin
+--- Find the relay.js entry point
 local function find_relay_path()
   local plugin_root = get_plugin_root()
   local built = plugin_root .. "/dist/server/relay.js"
   if vim.fn.filereadable(built) == 1 then
     return { "node", built }
-  end
-  local src = plugin_root .. "/src/server/relay.ts"
-  if vim.fn.filereadable(src) == 1 then
-    return { "npx", "tsx", src }
   end
   return nil
 end
@@ -92,8 +32,6 @@ local browser_opened = false
 local function open_browser(url)
   if browser_opened then return end
   browser_opened = true
-
-  -- Non-blocking browser open (only called once per session)
   local cmd
   if vim.fn.has("mac") == 1 then
     cmd = { "open", url }
@@ -137,7 +75,6 @@ local function on_message(msg)
       local line = math.min(msg.line, line_count)
       local col = math.max((msg.col or 1) - 1, 0)
       vim.api.nvim_win_set_cursor(0, { line, col })
-      -- select the word under cursor and center view
       vim.cmd("normal! viw")
       vim.cmd("normal! zz")
     end
@@ -162,19 +99,11 @@ local function send_buffer(bufnr)
   if not tcp.is_connected() then return end
   if not project_root then return end
   local abs_path = vim.api.nvim_buf_get_name(bufnr)
-
-  -- path must be relative to the scanned project root
   if not vim.startswith(abs_path, project_root .. "/") then return end
   local rel = abs_path:sub(#project_root + 2)
-
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
   local content = table.concat(lines, "\n")
-
-  tcp.send({
-    type = "fileChanged",
-    path = rel,
-    content = content,
-  })
+  tcp.send({ type = "fileChanged", path = rel, content = content })
 end
 
 local debounce_timer = nil
@@ -186,7 +115,6 @@ local function setup_autocmd()
 
   augroup = vim.api.nvim_create_augroup("ActNvim", { clear = true })
 
-  -- Immediate refresh on save
   vim.api.nvim_create_autocmd("BufWritePost", {
     group = augroup,
     pattern = { "*.ts", "*.tsx" },
@@ -195,14 +123,11 @@ local function setup_autocmd()
     end,
   })
 
-  -- Send LSP diagnostics to relay so browser can mark slices with errors
   vim.api.nvim_create_autocmd("DiagnosticChanged", {
     group = augroup,
     callback = function()
       if not tcp.is_connected() then return end
       if not project_root then return end
-
-      -- Collect errors per file
       local file_errors = {}
       local diagnostics = vim.diagnostic.get(nil, { severity = vim.diagnostic.severity.ERROR })
       for _, d in ipairs(diagnostics) do
@@ -217,16 +142,10 @@ local function setup_autocmd()
           end
         end
       end
-
-      tcp.send({
-        type = "diagnostics",
-        errors = file_errors,
-      })
-
+      tcp.send({ type = "diagnostics", errors = file_errors })
     end,
   })
 
-  -- Debounced live refresh as you type
   vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI" }, {
     group = augroup,
     pattern = { "*.ts", "*.tsx" },
@@ -247,15 +166,13 @@ end
 local function connect_and_init(target_root)
   tcp.connect(config.tcp_port, on_message, on_error)
   connected = true
-
-  -- give TCP a moment to establish, then send init
   vim.defer_fn(function()
     send_init(target_root)
     setup_autocmd()
   end, 200)
 end
 
---- Kill orphan relay processes on a port (only kills node processes running relay.js)
+--- Kill orphan relay processes (only kills act-nvim-relay processes)
 local function kill_orphan_relay(port)
   local result = vim.fn.system("lsof -ti :" .. port)
   for pid in result:gmatch("%d+") do
@@ -270,20 +187,15 @@ end
 local function spawn_relay(callback)
   local cmd = find_relay_path()
   if not cmd then
-    -- Auto-install and build, then retry
-    ensure_built(get_plugin_root(), function()
-      local retry_cmd = find_relay_path()
-      if not retry_cmd then
-        vim.notify("[act-nvim] relay server not found after build", vim.log.levels.ERROR)
-        return
-      end
-      -- Retry spawn after build
-      spawn_relay(callback)
-    end)
+    vim.notify(
+      "[act-nvim] not built — run: cd "
+        .. get_plugin_root()
+        .. " && pnpm install",
+      vim.log.levels.ERROR
+    )
     return false
   end
 
-  -- Kill orphan relays before starting
   kill_orphan_relay(config.http_port)
   kill_orphan_relay(config.tcp_port)
 
@@ -321,7 +233,6 @@ local function start(opts)
     target_root = vim.fn.fnamemodify(opts.args, ":p"):gsub("/$", "")
   end
 
-  -- already connected — just re-init with new root
   if connected and tcp.is_connected() then
     if target_root then
       project_root = target_root
@@ -333,7 +244,6 @@ local function start(opts)
     return
   end
 
-  -- Always spawn a fresh relay (kills orphans first, auto-builds if needed)
   vim.notify("[act-nvim] starting relay server...", vim.log.levels.INFO)
   spawn_relay(function()
     vim.defer_fn(function()
@@ -379,7 +289,7 @@ function M.setup(opts)
     desc = "Close Act diagram",
   })
 
-  -- Disconnect TCP when Neovim exits (but leave the relay running for tab reuse)
+  -- Disconnect TCP when Neovim exits (relay keeps running for tab reuse)
   vim.api.nvim_create_autocmd("VimLeavePre", {
     callback = function()
       tcp.disconnect()
