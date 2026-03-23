@@ -8,12 +8,73 @@ local augroup = nil
 local connected = false
 local project_root = nil
 
---- Find the relay.js entry point relative to this plugin
-local function find_relay_path()
-  local plugin_root = vim.fn.fnamemodify(
-    debug.getinfo(1, "S").source:sub(2), -- strip @
+--- Get the plugin root directory
+local function get_plugin_root()
+  return vim.fn.fnamemodify(
+    debug.getinfo(1, "S").source:sub(2),
     ":h:h:h" -- lua/act-nvim/init.lua -> plugin root
   )
+end
+
+--- Install dependencies and build (runs once if dist/ is missing)
+local function ensure_built(plugin_root, callback)
+  local built = plugin_root .. "/dist/server/relay.js"
+  if vim.fn.filereadable(built) == 1 then
+    if callback then callback() end
+    return
+  end
+
+  -- Check if node_modules exists
+  local has_modules = vim.fn.isdirectory(plugin_root .. "/node_modules") == 1
+
+  if not has_modules then
+    vim.notify("[act-nvim] Installing dependencies...", vim.log.levels.INFO)
+    vim.fn.jobstart({ "pnpm", "install" }, {
+      cwd = plugin_root,
+      on_exit = function(_, code)
+        vim.schedule(function()
+          if code ~= 0 then
+            vim.notify("[act-nvim] pnpm install failed (exit " .. code .. ")", vim.log.levels.ERROR)
+            return
+          end
+          vim.notify("[act-nvim] Building...", vim.log.levels.INFO)
+          vim.fn.jobstart({ "pnpm", "build" }, {
+            cwd = plugin_root,
+            on_exit = function(_, build_code)
+              vim.schedule(function()
+                if build_code ~= 0 then
+                  vim.notify("[act-nvim] Build failed (exit " .. build_code .. ")", vim.log.levels.ERROR)
+                else
+                  vim.notify("[act-nvim] Ready", vim.log.levels.INFO)
+                  if callback then callback() end
+                end
+              end)
+            end,
+          })
+        end)
+      end,
+    })
+  else
+    vim.notify("[act-nvim] Building...", vim.log.levels.INFO)
+    vim.fn.jobstart({ "pnpm", "build" }, {
+      cwd = plugin_root,
+      on_exit = function(_, code)
+        vim.schedule(function()
+          if code ~= 0 then
+            vim.notify("[act-nvim] Build failed (exit " .. code .. ")", vim.log.levels.ERROR)
+          else
+            vim.notify("[act-nvim] Ready", vim.log.levels.INFO)
+            if callback then callback() end
+          end
+        end)
+      end,
+    })
+  end
+end
+
+--- Find the relay.js entry point relative to this plugin
+local function find_relay_path()
+  local plugin_root = get_plugin_root()
   local built = plugin_root .. "/dist/server/relay.js"
   if vim.fn.filereadable(built) == 1 then
     return { "node", built }
@@ -206,10 +267,19 @@ local function kill_orphan_relay(port)
 end
 
 --- Spawn the relay server as a child process
-local function spawn_relay()
+local function spawn_relay(callback)
   local cmd = find_relay_path()
   if not cmd then
-    vim.notify("[act-nvim] relay server not found — run pnpm build first", vim.log.levels.ERROR)
+    -- Auto-install and build, then retry
+    ensure_built(get_plugin_root(), function()
+      local retry_cmd = find_relay_path()
+      if not retry_cmd then
+        vim.notify("[act-nvim] relay server not found after build", vim.log.levels.ERROR)
+        return
+      end
+      -- Retry spawn after build
+      spawn_relay(callback)
+    end)
     return false
   end
 
@@ -240,6 +310,7 @@ local function spawn_relay()
       end,
     }
   )
+  if callback then callback() end
   return true
 end
 
@@ -262,13 +333,13 @@ local function start(opts)
     return
   end
 
-  -- Always spawn a fresh relay (kills orphans first)
+  -- Always spawn a fresh relay (kills orphans first, auto-builds if needed)
   vim.notify("[act-nvim] starting relay server...", vim.log.levels.INFO)
-  if spawn_relay() then
+  spawn_relay(function()
     vim.defer_fn(function()
       connect_and_init(target_root)
     end, 500)
-  end
+  end)
 end
 
 local function stop()
