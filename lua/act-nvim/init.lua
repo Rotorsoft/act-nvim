@@ -209,12 +209,11 @@ end
 
 --- Connect to relay, send init, set up autocmds
 local function connect_and_init(target_root)
-  tcp.connect(config.tcp_port, on_message, on_error)
-  connected = true
-  vim.defer_fn(function()
+  tcp.connect(config.tcp_port, on_message, on_error, function()
+    connected = true
     send_init(target_root)
     setup_autocmd()
-  end, 200)
+  end)
 end
 
 --- Kill orphan relay processes (only kills act-nvim-relay processes)

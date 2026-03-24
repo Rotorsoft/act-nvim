@@ -9,7 +9,8 @@ local buffer = ""
 ---@param port integer
 ---@param on_message fun(msg: table)
 ---@param on_error fun(err: string)
-function M.connect(port, on_message, on_error)
+---@param on_connect? fun()
+function M.connect(port, on_message, on_error, on_connect)
   if client then
     M.disconnect()
   end
@@ -22,6 +23,10 @@ function M.connect(port, on_message, on_error)
       on_error("TCP connect failed: " .. err)
       M.disconnect()
       return
+    end
+
+    if on_connect then
+      vim.schedule(on_connect)
     end
 
     client:read_start(function(read_err, data)
