@@ -291,7 +291,7 @@ end
 function M.setup(opts)
   if opts then
     for k, v in pairs(opts) do
-      if config[k] ~= nil then
+      if config._keys[k] then
         config[k] = v
       end
     end
