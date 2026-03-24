@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@rotorsoft/act-diagram':
-        specifier: ^0.2.1
-        version: 0.2.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        specifier: ^0.2.2
+        version: 0.2.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       ws:
         specifier: ^8.20.0
         version: 8.20.0
@@ -483,8 +483,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@rotorsoft/act-diagram@0.2.1':
-    resolution: {integrity: sha512-EvL+GW45G+JF33peBGv9RgrQxyekmOL9ifr1V7TrJe/GTvGebUdUEIPyvoWcTX0Lgw6B/1NCdwmuyYmmcza54g==}
+  '@rotorsoft/act-diagram@0.2.2':
+    resolution: {integrity: sha512-MC1sHv2rTJe94/lG7HePJ9VsYoRJP6ZDXolw0gUfyoJo9AB4O9ixbKRJzy2E2s2Zsnd6KOP8EcDuiqLE9I7zig==}
     engines: {node: '>=22.18.0'}
     peerDependencies:
       react: ^18.0.0 || ^19.0.0
@@ -1276,7 +1276,7 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.60.0':
     optional: true
 
-  '@rotorsoft/act-diagram@0.2.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+  '@rotorsoft/act-diagram@0.2.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
       lucide-react: 0.577.0(react@19.2.4)
       react: 19.2.4
