@@ -29,11 +29,28 @@ end
 --- Open URL in default browser
 local browser_opened = false
 
+local function diagram_url()
+  return "http://localhost:" .. config.http_port
+end
+
 local function open_browser(url)
   if browser_opened then return end
   browser_opened = true
+
+  vim.notify("[act-nvim] diagram at " .. url, vim.log.levels.INFO)
+
+  if not config.auto_open then return end
+
   local cmd
-  if vim.fn.has("mac") == 1 then
+  if config.browser then
+    if vim.fn.has("mac") == 1 and not config.browser:find("/") then
+      -- macOS app name (e.g. "Arc", "Firefox") — use `open -a`
+      cmd = { "open", "-a", config.browser, url }
+    else
+      -- Full path or Linux executable
+      cmd = { config.browser, url }
+    end
+  elseif vim.fn.has("mac") == 1 then
     cmd = { "open", url }
   elseif vim.fn.has("unix") == 1 then
     cmd = { "xdg-open", url }
@@ -51,15 +68,15 @@ local function on_message(msg)
   end
   if msg.type == "browserConnected" then
     browser_opened = true
+    vim.notify("[act-nvim] diagram at " .. diagram_url(), vim.log.levels.INFO)
     return
   end
   if msg.type == "status" then
     if msg.browserConnected then
       browser_opened = true
-      vim.notify("[act-nvim] browser tab already open", vim.log.levels.DEBUG)
+      vim.notify("[act-nvim] diagram at " .. diagram_url(), vim.log.levels.INFO)
     else
-      open_browser("http://localhost:" .. config.http_port)
-      vim.notify("[act-nvim] opened browser tab", vim.log.levels.DEBUG)
+      open_browser(diagram_url())
     end
     return
   end

@@ -3729,7 +3729,6 @@ var nvimSocket = null;
 var nvimBuffer = "";
 var fsWatcher = null;
 var lastFiles = null;
-var browserEverConnected = false;
 function sendToNvim(msg) {
   if (nvimSocket?.writable) {
     nvimSocket.write(JSON.stringify(msg) + "\n");
@@ -3767,7 +3766,6 @@ var httpServer = (0, import_node_http.createServer)(async (req, res) => {
 var wss = new import_websocket_server.default({ server: httpServer, path: "/ws" });
 wss.on("connection", (ws) => {
   console.log("[relay] browser connected");
-  browserEverConnected = true;
   if (lastFiles) {
     ws.send(JSON.stringify(lastFiles));
   }
@@ -3790,10 +3788,21 @@ var tcpServer = (0, import_node_net.createServer)((socket) => {
   console.log("[relay] neovim connected");
   nvimSocket = socket;
   nvimBuffer = "";
-  const hasBrowser = browserEverConnected || wss.clients.size > 0;
-  socket.write(
-    JSON.stringify({ type: "status", browserConnected: hasBrowser }) + "\n"
-  );
+  if (wss.clients.size > 0) {
+    socket.write(
+      JSON.stringify({ type: "status", browserConnected: true }) + "\n"
+    );
+  } else {
+    setTimeout(() => {
+      if (!socket.writable) return;
+      socket.write(
+        JSON.stringify({
+          type: "status",
+          browserConnected: wss.clients.size > 0
+        }) + "\n"
+      );
+    }, 1500);
+  }
   socket.on("data", (chunk) => {
     nvimBuffer += chunk.toString();
     const lines = nvimBuffer.split("\n");

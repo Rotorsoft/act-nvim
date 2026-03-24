@@ -26,7 +26,6 @@ let nvimSocket: Socket | null = null;
 let nvimBuffer = "";
 let fsWatcher: ReturnType<typeof watchDir> | null = null;
 let lastFiles: object | null = null; // cache last "files" message for new browser connections
-let browserEverConnected = false; // true once any browser has connected to this relay instance
 
 /** Send NDJSON message to Neovim */
 function sendToNvim(msg: object) {
@@ -74,7 +73,6 @@ const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
 
 wss.on("connection", (ws) => {
   console.log("[relay] browser connected");
-  browserEverConnected = true;
 
   // replay last files to the new connection
   if (lastFiles) {
@@ -106,11 +104,23 @@ const tcpServer = createTcpServer((socket) => {
   nvimSocket = socket;
   nvimBuffer = "";
 
-  // Tell Neovim if a browser is or was connected (to prevent duplicate tabs)
-  const hasBrowser = browserEverConnected || wss.clients.size > 0;
-  socket.write(
-    JSON.stringify({ type: "status", browserConnected: hasBrowser }) + "\n"
-  );
+  // Wait briefly for existing browser tabs to reconnect (auto-reconnect is 1s)
+  // before telling Neovim whether to open a new tab
+  if (wss.clients.size > 0) {
+    socket.write(
+      JSON.stringify({ type: "status", browserConnected: true }) + "\n"
+    );
+  } else {
+    setTimeout(() => {
+      if (!socket.writable) return;
+      socket.write(
+        JSON.stringify({
+          type: "status",
+          browserConnected: wss.clients.size > 0,
+        }) + "\n"
+      );
+    }, 1500);
+  }
 
   socket.on("data", (chunk) => {
     nvimBuffer += chunk.toString();

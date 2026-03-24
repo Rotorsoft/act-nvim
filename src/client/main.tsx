@@ -9,7 +9,6 @@ import React, {
   StrictMode,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -50,6 +49,86 @@ class ErrorBoundary extends React.Component<
 
 const WS_URL = `ws://${window.location.host}/ws`;
 const RECONNECT_MS = 1000;
+
+type DomainModel = ReturnType<typeof extractModel>["model"];
+type ValidationWarning = ReturnType<typeof validate>[number];
+
+const emptyModel: DomainModel = {
+  entries: [],
+  states: [],
+  slices: [],
+  projections: [],
+  reactions: [],
+};
+
+/** Debounced model extraction with fallback to last good model */
+function useExtractModel(
+  files: FileTab[],
+  fileErrors: Record<string, string>
+) {
+  const [result, setResult] = useState<{
+    model: DomainModel;
+    warnings: ValidationWarning[];
+    error?: string;
+  }>({ model: emptyModel, warnings: [] });
+  const lastGoodRef = useRef<typeof result | null>(null);
+
+  useEffect(() => {
+    if (files.length === 0) {
+      lastGoodRef.current = null;
+      setResult({ model: emptyModel, warnings: [] });
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      try {
+        const { model, error } = extractModel(files);
+        // Overlay LSP diagnostics: mark slices whose source file has errors
+        for (const slice of model.slices) {
+          if (slice.file && fileErrors[slice.file] && !slice.error) {
+            slice.error = fileErrors[slice.file];
+          }
+        }
+        for (const slice of model.slices) {
+          if (slice.error) continue;
+          for (const st of model.states) {
+            if (
+              slice.states.includes(st.varName) &&
+              st.file &&
+              fileErrors[st.file]
+            ) {
+              slice.error = fileErrors[st.file];
+              break;
+            }
+          }
+        }
+        const warnings = validate(model);
+        const hasErrors =
+          !!error || model.slices.some((s) => !!s.error);
+
+        if (!hasErrors) {
+          const next = { model, warnings, error };
+          lastGoodRef.current = next;
+          setResult(next);
+        } else if (lastGoodRef.current) {
+          // Keep showing last good model during transient errors
+        } else {
+          setResult({ model, warnings, error });
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error("[act-nvim] extractModel failed:", msg);
+        if (!lastGoodRef.current) {
+          setResult({ model: emptyModel, warnings: [], error: msg });
+        }
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [files, fileErrors]);
+
+  return result;
+}
 
 function App() {
   const [files, setFiles] = useState<FileTab[]>([]);
@@ -130,59 +209,7 @@ function App() {
     };
   }, []);
 
-  const { model, warnings, error } = useMemo(() => {
-    if (files.length === 0)
-      return {
-        model: {
-          entries: [],
-          states: [],
-          slices: [],
-          projections: [],
-          reactions: [],
-        },
-        warnings: [],
-        error: undefined,
-      };
-    try {
-      const { model, error } = extractModel(files);
-      // Overlay LSP diagnostics: mark slices whose source file has errors
-      for (const slice of model.slices) {
-        if (slice.file && fileErrors[slice.file] && !slice.error) {
-          slice.error = fileErrors[slice.file];
-        }
-      }
-      // Also mark slices whose states come from files with errors
-      for (const slice of model.slices) {
-        if (slice.error) continue;
-        for (const st of model.states) {
-          if (
-            slice.states.includes(st.varName) &&
-            st.file &&
-            fileErrors[st.file]
-          ) {
-            slice.error = fileErrors[st.file];
-            break;
-          }
-        }
-      }
-      const warnings = validate(model);
-      return { model, warnings, error };
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      console.error("[act-nvim] extractModel failed:", msg);
-      return {
-        model: {
-          entries: [],
-          states: [],
-          slices: [],
-          projections: [],
-          reactions: [],
-        },
-        warnings: [],
-        error: msg,
-      };
-    }
-  }, [files, fileErrors]);
+  const { model, warnings, error } = useExtractModel(files, fileErrors);
 
   const handleClick = useCallback(
     (name: string, type?: string, file?: string) => {

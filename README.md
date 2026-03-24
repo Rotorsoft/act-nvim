@@ -64,11 +64,85 @@ Stop manually:
 
 ```lua
 require("act-nvim").setup({
-  tcp_port = 4011,
-  http_port = 4010,
-  auto_refresh = true,
+  tcp_port = 4011,       -- relay TCP port (Neovim ↔ relay)
+  http_port = 4010,      -- relay HTTP port (browser connects here)
+  auto_refresh = true,   -- update diagram on save and as-you-type
+  auto_open = true,      -- open browser automatically on :ActDiagram
+  browser = nil,         -- browser to use (see below)
 })
 ```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `tcp_port` | `4011` | TCP port for Neovim ↔ relay communication |
+| `http_port` | `4010` | HTTP port where the browser connects (`http://localhost:4010`) |
+| `auto_refresh` | `true` | Send file updates on save and as-you-type (500ms debounce) |
+| `auto_open` | `true` | Open browser automatically when running `:ActDiagram` |
+| `browser` | `nil` | Browser to open (see below). `nil` = OS default browser |
+
+### Browser selection
+
+By default the plugin opens your OS default browser. Set `browser` to pick a specific one.
+
+The diagram URL is always shown in Neovim messages (e.g. `[act-nvim] diagram at http://localhost:4010`) so you can open it manually in any browser.
+
+#### macOS
+
+On macOS, set `browser` to an app name — the plugin uses `open -a <name>`:
+
+```lua
+require("act-nvim").setup({ browser = "Arc" })
+require("act-nvim").setup({ browser = "Google Chrome" })
+require("act-nvim").setup({ browser = "Firefox" })
+require("act-nvim").setup({ browser = "Safari" })
+require("act-nvim").setup({ browser = "Brave Browser" })
+require("act-nvim").setup({ browser = "Microsoft Edge" })
+```
+
+You can also use a full path:
+
+```lua
+require("act-nvim").setup({ browser = "/Applications/Arc.app/Contents/MacOS/Arc" })
+```
+
+#### Linux
+
+On Linux, set `browser` to the executable name (must be in `$PATH`):
+
+```lua
+require("act-nvim").setup({ browser = "google-chrome" })
+require("act-nvim").setup({ browser = "google-chrome-stable" })
+require("act-nvim").setup({ browser = "firefox" })
+require("act-nvim").setup({ browser = "brave-browser" })
+require("act-nvim").setup({ browser = "microsoft-edge" })
+require("act-nvim").setup({ browser = "chromium" })
+```
+
+When `browser` is `nil`, the plugin uses `xdg-open` (respects `$BROWSER` env var and desktop defaults).
+
+#### Windows
+
+On Windows, set `browser` to the full path:
+
+```lua
+require("act-nvim").setup({ browser = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" })
+```
+
+When `browser` is `nil`, the plugin uses `cmd /c start` (opens the default browser).
+
+#### Disable auto-open
+
+If you prefer to manage the browser window yourself (e.g., keep a pinned tab side-by-side with your editor):
+
+```lua
+require("act-nvim").setup({ auto_open = false })
+```
+
+The URL is printed to Neovim messages on every start — just navigate to it manually.
+
+### Tab reuse
+
+The relay server reuses existing browser tabs. If a tab with the diagram is already open when you run `:ActDiagram`, the relay detects the active WebSocket connection and skips opening a new tab. The existing tab automatically reconnects and receives the latest files.
 
 ## Architecture
 
