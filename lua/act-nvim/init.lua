@@ -73,10 +73,18 @@ local function flash_word()
   if not line:sub(s + 1, s + 1):match("[%w_]") then s = s + 1 end
   while e < #line and line:sub(e + 1, e + 1):match("[%w_]") do e = e + 1 end
   if s <= e then
-    vim.api.nvim_buf_add_highlight(bufnr, nav_ns, "Visual", row - 1, s, e)
-    vim.defer_fn(function()
-      vim.api.nvim_buf_clear_namespace(bufnr, nav_ns, 0, -1)
-    end, 700)
+    local count = 0
+    local function blink()
+      if count >= 6 then return end -- 3 on + 3 off
+      if count % 2 == 0 then
+        vim.api.nvim_buf_add_highlight(bufnr, nav_ns, "Visual", row - 1, s, e)
+      else
+        vim.api.nvim_buf_clear_namespace(bufnr, nav_ns, 0, -1)
+      end
+      count = count + 1
+      vim.defer_fn(blink, 200)
+    end
+    blink()
   end
 end
 
