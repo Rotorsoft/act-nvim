@@ -92,8 +92,8 @@ local function on_message(msg)
       local line = math.min(msg.line, line_count)
       local col = math.max((msg.col or 1) - 1, 0)
       vim.api.nvim_win_set_cursor(0, { line, col })
-      vim.cmd("normal! viw")
       vim.cmd("normal! zz")
+      vim.cmd("normal! viw\027")
     end
   end
 end
