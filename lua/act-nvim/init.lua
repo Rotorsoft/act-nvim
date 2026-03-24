@@ -60,6 +60,26 @@ local function open_browser(url)
   vim.fn.jobstart(cmd, { detach = true })
 end
 
+--- Flash-highlight the word under cursor, then return to normal mode
+local nav_ns = vim.api.nvim_create_namespace("act_nvim_nav")
+
+local function flash_word()
+  local bufnr = vim.api.nvim_get_current_buf()
+  local row, col = unpack(vim.api.nvim_win_get_cursor(0))
+  local line = vim.api.nvim_buf_get_lines(bufnr, row - 1, row, false)[1] or ""
+  -- Find word boundaries around cursor
+  local s, e = col, col
+  while s > 0 and line:sub(s, s):match("[%w_]") do s = s - 1 end
+  if not line:sub(s + 1, s + 1):match("[%w_]") then s = s + 1 end
+  while e < #line and line:sub(e + 1, e + 1):match("[%w_]") do e = e + 1 end
+  if s <= e then
+    vim.api.nvim_buf_add_highlight(bufnr, nav_ns, "Visual", row - 1, s, e)
+    vim.defer_fn(function()
+      vim.api.nvim_buf_clear_namespace(bufnr, nav_ns, 0, -1)
+    end, 700)
+  end
+end
+
 --- Handle messages from the relay server
 local function on_message(msg)
   if msg.type == "error" then
@@ -67,12 +87,16 @@ local function on_message(msg)
     return
   end
   if msg.type == "browserConnected" then
-    browser_opened = true
+    -- An existing tab reconnected — only skip opening if no specific browser configured
+    if not config.browser then
+      browser_opened = true
+    end
     vim.notify("[act-nvim] diagram at " .. diagram_url(), vim.log.levels.INFO)
     return
   end
   if msg.type == "status" then
-    if msg.browserConnected then
+    if msg.browserConnected and not config.browser then
+      -- Existing tab from default browser — reuse it
       browser_opened = true
       vim.notify("[act-nvim] diagram at " .. diagram_url(), vim.log.levels.INFO)
     else
@@ -93,7 +117,7 @@ local function on_message(msg)
       local col = math.max((msg.col or 1) - 1, 0)
       vim.api.nvim_win_set_cursor(0, { line, col })
       vim.cmd("normal! zz")
-      vim.cmd("normal! viw\027")
+      flash_word()
     end
   end
 end
