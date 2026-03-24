@@ -95,16 +95,12 @@ local function on_message(msg)
     return
   end
   if msg.type == "browserConnected" then
-    -- An existing tab reconnected — only skip opening if no specific browser configured
-    if not config.browser then
-      browser_opened = true
-    end
+    browser_opened = true
     vim.notify("[act-nvim] diagram at " .. diagram_url(), vim.log.levels.INFO)
     return
   end
   if msg.type == "status" then
-    if msg.browserConnected and not config.browser then
-      -- Existing tab from default browser — reuse it
+    if msg.browserConnected then
       browser_opened = true
       vim.notify("[act-nvim] diagram at " .. diagram_url(), vim.log.levels.INFO)
     else
@@ -293,11 +289,25 @@ local function start(opts)
     return
   end
 
-  vim.notify("[act-nvim] starting relay server...", vim.log.levels.INFO)
-  spawn_relay(function()
-    vim.defer_fn(function()
-      connect_and_init(target_root)
-    end, 500)
+  -- Try connecting to an existing relay first (preserves browser tab)
+  local probe = (vim.uv or vim.loop).new_tcp()
+  probe:connect("127.0.0.1", config.tcp_port, function(err)
+    probe:close()
+    vim.schedule(function()
+      if not err then
+        -- Relay already running — just connect
+        vim.notify("[act-nvim] connecting to existing relay...", vim.log.levels.INFO)
+        connect_and_init(target_root)
+      else
+        -- No relay — spawn one
+        vim.notify("[act-nvim] starting relay server...", vim.log.levels.INFO)
+        spawn_relay(function()
+          vim.defer_fn(function()
+            connect_and_init(target_root)
+          end, 500)
+        end)
+      end
+    end)
   end)
 end
 
