@@ -82,7 +82,7 @@ local function flash_word()
         vim.api.nvim_buf_clear_namespace(bufnr, nav_ns, 0, -1)
       end
       count = count + 1
-      vim.defer_fn(blink, 500)
+      vim.defer_fn(blink, 300)
     end
     blink()
   end

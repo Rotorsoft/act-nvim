@@ -61,7 +61,7 @@ const emptyModel: DomainModel = {
   reactions: [],
 };
 
-/** Debounced model extraction with fallback to last good model */
+/** Debounced model extraction */
 function useExtractModel(
   files: FileTab[],
   fileErrors: Record<string, string>
@@ -71,15 +71,14 @@ function useExtractModel(
     warnings: ValidationWarning[];
     error?: string;
   }>({ model: emptyModel, warnings: [] });
-  const lastGoodRef = useRef<typeof result | null>(null);
 
   useEffect(() => {
     if (files.length === 0) {
-      lastGoodRef.current = null;
       setResult({ model: emptyModel, warnings: [] });
       return;
     }
 
+    // Short debounce to batch rapid file changes (e.g. multi-file edits)
     const timer = setTimeout(() => {
       try {
         const { model, error } = extractModel(files);
@@ -103,24 +102,11 @@ function useExtractModel(
           }
         }
         const warnings = validate(model);
-        const hasErrors =
-          !!error || model.slices.some((s) => !!s.error);
-
-        if (!hasErrors) {
-          const next = { model, warnings, error };
-          lastGoodRef.current = next;
-          setResult(next);
-        } else if (lastGoodRef.current) {
-          // Keep showing last good model during transient errors
-        } else {
-          setResult({ model, warnings, error });
-        }
+        setResult({ model, warnings, error });
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         console.error("[act-nvim] extractModel failed:", msg);
-        if (!lastGoodRef.current) {
-          setResult({ model: emptyModel, warnings: [], error: msg });
-        }
+        setResult({ model: emptyModel, warnings: [], error: msg });
       }
     }, 300);
 
