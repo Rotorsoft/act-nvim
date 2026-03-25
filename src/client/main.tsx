@@ -13,6 +13,7 @@ import React, {
   useState,
 } from "react";
 import { createRoot } from "react-dom/client";
+import "@rotorsoft/act-diagram/styles.css";
 import "./styles.css";
 
 class ErrorBoundary extends React.Component<
