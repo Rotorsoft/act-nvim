@@ -31,11 +31,10 @@
     "postinstall": "pnpm build"
   },
   "dependencies": {
-    "@rotorsoft/act-diagram": "^0.2.2",
+    "@rotorsoft/act-diagram": "^0.3.0",
     "ws": "^8.20.0"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
@@ -43,7 +42,6 @@
     "@vitejs/plugin-react": "^6.0.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "tailwindcss": "^4.2.2",
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",
     "typescript": "~6.0.2",
